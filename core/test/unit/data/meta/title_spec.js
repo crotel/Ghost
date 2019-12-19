@@ -25,225 +25,419 @@ describe('getTitle', function () {
         title.should.equal('My test title');
     });
 
-    it('should return blog title if on home', function () {
-        localSettingsCache.title = 'My blog title';
+    describe('property: null', function () {
+        it('has correct fallbacks for context: home', function () {
+            localSettingsCache.title = 'My site title';
+            localSettingsCache.meta_title = 'My site meta title';
 
-        var title = getTitle({}, {context: 'home'});
-        title.should.equal('My blog title');
-    });
+            getTitle({}, {context: 'home'})
+                .should.equal('My site meta title');
 
-    it('should return author name - blog title if on data author page', function () {
-        localSettingsCache.title = 'My blog title 2';
+            localSettingsCache.meta_title = '';
 
-        var title = getTitle({
-            author: {
-                name: 'Author Name'
-            }
-        }, {context: ['author']});
-
-        title.should.equal('Author Name - My blog title 2');
-    });
-
-    it('should return author page title if on data author page with more then one page', function () {
-        localSettingsCache.title = 'My blog title 2';
-
-        var title = getTitle({
-            author: {
-                name: 'Author Name'
-            }
-        }, {
-            context: ['author', 'paged'],
-            pagination: {
-                total: 40,
-                page: 3
-            }
+            getTitle({}, {context: 'home'})
+                .should.equal('My site title');
         });
 
-        title.should.equal('Author Name - My blog title 2 (Page 3)');
-    });
+        it('has correct fallbacks for context: post', function () {
+            localSettingsCache.title = 'My site title';
+            const post = {
+                title: 'Post title',
+                meta_title: 'Post meta title'
+            };
 
-    it('should return tag name - blog title if on data tag page no meta_title', function () {
-        localSettingsCache.title = 'My blog title 3';
+            getTitle({post}, {context: 'post'})
+                .should.equal('Post meta title');
 
-        var title = getTitle({
-            tag: {
-                name: 'Tag Name'
-            }
-        }, {context: ['tag']});
+            post.meta_title = '';
 
-        title.should.equal('Tag Name - My blog title 3');
-    });
+            getTitle({post}, {context: 'post'})
+                .should.equal('Post title');
 
-    it('should return tag name - blog title if on data tag page no meta_title (Page #)', function () {
-        localSettingsCache.title = 'My blog title 3';
+            post.title = '';
 
-        var title = getTitle({
-            tag: {
-                name: 'Tag Name'
-            }
-        }, {
-            context: ['tag', 'paged'],
-            pagination: {
-                total: 40,
-                page: 39
-            }
+            getTitle({post}, {context: 'post'})
+                .should.equal('');
         });
 
-        title.should.equal('Tag Name - My blog title 3 (Page 39)');
-    });
+        it('has correct fallbacks for context: page', function () {
+            localSettingsCache.title = 'My site title';
+            const page = {
+                title: 'Page title',
+                meta_title: 'Page meta title'
+            };
 
-    it('should return translated pagination-string if passed in options object', function () {
-        localSettingsCache.title = 'This is my blog title';
+            getTitle({page}, {context: 'page'})
+                .should.equal('Page meta title');
 
-        var title = getTitle({
-            tag: {
-                name: 'Tag Name'
-            }
-        }, {
-            context: ['tag', 'paged'],
-            pagination: {
-                total: 40,
-                page: 23
-            }
-        }, {
-            hash: {
-                page: ' p.%'
-            }
+            page.meta_title = '';
+
+            getTitle({page}, {context: 'page'})
+                .should.equal('Page title');
+
+            page.title = '';
+
+            getTitle({page}, {context: 'page'})
+                .should.equal('');
         });
 
-        title.should.equal('Tag Name - This is my blog title p.23');
-    });
+        // NOTE: this is a legacy format and should be resolved with https://github.com/TryGhost/Ghost/issues/10042
+        it('has correct fallbacks for context: page (legacy format)', function () {
+            localSettingsCache.title = 'My site title';
+            const post = {
+                title: 'Page title',
+                meta_title: 'Page meta title'
+            };
 
-    it('should return tag meta_title if in tag data', function () {
-        var title = getTitle({
-            tag: {
-                name: 'Tag Name',
-                meta_title: 'My Tag Meta Title!'
-            }
-        }, {context: ['tag']});
+            getTitle({post}, {context: 'page'})
+                .should.equal('Page meta title');
 
-        title.should.equal('My Tag Meta Title!');
-    });
+            post.meta_title = '';
 
-    it('should return post title if in post context', function () {
-        var title = getTitle({
-            post: {
-                title: 'My awesome post!'
-            }
-        }, {context: ['post']});
+            getTitle({post}, {context: 'page'})
+                .should.equal('Page title');
 
-        title.should.equal('My awesome post!');
-    });
+            post.title = '';
 
-    it('should return OG post title if in post context', function () {
-        var title = getTitle({
-            post: {
-                title: 'My awesome post!',
-                og_title: 'My Custom Facebook Title'
-            }
-        }, {
-            context: ['post']
-        }, {
-            property: 'og'
+            getTitle({post}, {context: 'page'})
+                .should.equal('');
         });
 
-        title.should.equal('My Custom Facebook Title');
-    });
+        it('has correct fallbacks for context: author', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const author = {
+                name: 'Author name'
+            };
 
-    it('should return twitter post title if in post context', function () {
-        var title = getTitle({
-            post: {
-                title: 'My awesome post!',
-                twitter_title: 'My Custom Twitter Title'
-            }
-        }, {
-            context: ['post']
-        }, {
-            property: 'twitter'
+            getTitle({author}, {context: 'author'})
+                .should.equal('Author name - Site title');
         });
 
-        title.should.equal('My Custom Twitter Title');
-    });
+        it('has correct fallbacks for context: author_paged', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const author = {
+                name: 'Author name'
+            };
 
-    it('should not return default post title if in amp context and called with twitter property', function () {
-        var title = getTitle({
-            post: {
-                title: 'My awesome post!',
-                twitter_title: ''
-            }
-        }, {
-            context: ['amp', 'post']
-        }, {
-            property: 'twitter'
+            getTitle({author}, {context: ['author', 'paged'], pagination: {total: 40, page: 3}})
+                .should.equal('Author name - Site title (Page 3)');
         });
 
-        title.should.equal('');
+        it('has correct fallbacks for context: tag', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const tag = {
+                name: 'Tag name',
+                meta_title: 'Tag meta title'
+            };
+
+            getTitle({tag}, {context: 'tag'})
+                .should.equal('Tag meta title');
+
+            tag.meta_title = '';
+
+            getTitle({tag}, {context: 'tag'})
+                .should.equal('Tag name - Site title');
+        });
+
+        it('has correct fallbacks for context: tag_paged', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const tag = {
+                name: 'Tag name',
+                meta_title: 'Tag meta title'
+            };
+
+            getTitle({tag}, {context: ['tag', 'paged'], pagination: {total: 40, page: 3}})
+                .should.equal('Tag meta title');
+
+            tag.meta_title = '';
+
+            getTitle({tag}, {context: ['tag', 'paged'], pagination: {total: 40, page: 3}})
+                .should.equal('Tag name - Site title (Page 3)');
+        });
     });
 
-    it('should return post title if in amp context', function () {
-        var title = getTitle({
-            post: {
-                title: 'My awesome post!'
-            }
-        }, {context: ['amp', 'post']});
+    describe('property: og', function () {
+        it('has correct fallbacks for context: home', function () {
+            localSettingsCache.title = 'My site title';
+            localSettingsCache.meta_title = 'My site meta title';
+            localSettingsCache.og_title = 'My site og title';
 
-        title.should.equal('My awesome post!');
+            getTitle({}, {context: 'home'}, {property: 'og'})
+                .should.equal('My site og title');
+
+            localSettingsCache.og_title = '';
+
+            getTitle({}, {context: 'home'}, {property: 'og'})
+                .should.equal('My site title');
+        });
+
+        it('has correct fallbacks for context: post', function () {
+            const post = {
+                title: 'Post title',
+                meta_title: 'Post meta title',
+                og_title: 'Post og title'
+            };
+
+            getTitle({post}, {context: 'post'}, {property: 'og'})
+                .should.equal('Post og title');
+
+            post.og_title = '';
+
+            getTitle({post}, {context: 'post'}, {property: 'og'})
+                .should.equal('Post meta title');
+
+            post.meta_title = '';
+
+            getTitle({post}, {context: 'post'}, {property: 'og'})
+                .should.equal('Post title');
+        });
+
+        it('has correct fallbacks for context: page', function () {
+            localSettingsCache.title = 'My site title';
+            const page = {
+                title: 'Page title',
+                meta_title: 'Page meta title',
+                og_title: 'Page og title'
+            };
+
+            getTitle({page}, {context: 'page'}, {property: 'og'})
+                .should.equal('Page og title');
+
+            page.og_title = '';
+
+            getTitle({page}, {context: 'page'}, {property: 'og'})
+                .should.equal('Page meta title');
+
+            page.meta_title = '';
+
+            getTitle({page}, {context: 'page'}, {property: 'og'})
+                .should.equal('Page title');
+        });
+
+        // NOTE: this is a legacy format and should be resolved with https://github.com/TryGhost/Ghost/issues/10042
+        it('has correct fallbacks for context: page (legacy format)', function () {
+            localSettingsCache.title = 'My site title';
+            const post = {
+                title: 'Page title',
+                meta_title: 'Page meta title',
+                og_title: 'Page og title'
+            };
+
+            getTitle({post}, {context: 'page'}, {property: 'og'})
+                .should.equal('Page og title');
+
+            post.og_title = '';
+
+            getTitle({post}, {context: 'page'}, {property: 'og'})
+                .should.equal('Page meta title');
+
+            post.meta_title = '';
+
+            getTitle({post}, {context: 'page'}, {property: 'og'})
+                .should.equal('Page title');
+        });
+
+        it('has correct fallbacks for context: author', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const author = {
+                name: 'Author name'
+            };
+
+            getTitle({author}, {context: 'author'}, {property: 'og'})
+                .should.equal('Author name - Site title');
+        });
+
+        it('has correct fallbacks for context: author_paged', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const author = {
+                name: 'Author name'
+            };
+
+            getTitle({author}, {context: ['author', 'paged'], pagination: {total: 40, page: 3}}, {property: 'og'})
+                .should.equal('Author name - Site title (Page 3)');
+        });
+
+        it('has correct fallbacks for context: tag', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const tag = {
+                name: 'Tag name',
+                meta_title: 'Tag meta title'
+            };
+
+            getTitle({tag}, {context: 'tag'}, {property: 'og'})
+                .should.equal('Tag meta title');
+
+            tag.meta_title = '';
+
+            getTitle({tag}, {context: 'tag'}, {property: 'og'})
+                .should.equal('Tag name - Site title');
+        });
+
+        it('has correct fallbacks for context: tag_paged', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const tag = {
+                name: 'Tag name',
+                meta_title: 'Tag meta title'
+            };
+
+            getTitle({tag}, {context: ['tag', 'paged'], pagination: {total: 40, page: 3}}, {property: 'og'})
+                .should.equal('Tag meta title');
+
+            tag.meta_title = '';
+
+            getTitle({tag}, {context: ['tag', 'paged'], pagination: {total: 40, page: 3}}, {property: 'og'})
+                .should.equal('Tag name - Site title (Page 3)');
+        });
     });
 
-    it('v0.1: should return post title if in page context', function () {
-        var title = getTitle({
-            post: {
-                title: 'My awesome page!'
-            }
-        }, {context: ['page']});
+    describe('property: twitter', function () {
+        it('has correct fallbacks for context: home', function () {
+            localSettingsCache.title = 'My site title';
+            localSettingsCache.meta_title = 'My site meta title';
+            localSettingsCache.twitter_title = 'My site twitter title';
 
-        title.should.equal('My awesome page!');
+            getTitle({}, {context: 'home'}, {property: 'twitter'})
+                .should.equal('My site twitter title');
+
+            localSettingsCache.twitter_title = '';
+
+            getTitle({}, {context: 'home'}, {property: 'twitter'})
+                .should.equal('My site title');
+        });
+
+        it('has correct fallbacks for context: post', function () {
+            const post = {
+                title: 'Post title',
+                meta_title: 'Post meta title',
+                twitter_title: 'Post twitter title'
+            };
+
+            getTitle({post}, {context: 'post'}, {property: 'twitter'})
+                .should.equal('Post twitter title');
+
+            post.twitter_title = '';
+
+            getTitle({post}, {context: 'post'}, {property: 'twitter'})
+                .should.equal('Post meta title');
+
+            post.meta_title = '';
+
+            getTitle({post}, {context: 'post'}, {property: 'twitter'})
+                .should.equal('Post title');
+        });
+
+        it('has correct fallbacks for context: page', function () {
+            localSettingsCache.title = 'My site title';
+            const page = {
+                title: 'Page title',
+                meta_title: 'Page meta title',
+                twitter_title: 'Page twitter title'
+            };
+
+            getTitle({page}, {context: 'page'}, {property: 'twitter'})
+                .should.equal('Page twitter title');
+
+            page.twitter_title = '';
+
+            getTitle({page}, {context: 'page'}, {property: 'twitter'})
+                .should.equal('Page meta title');
+
+            page.meta_title = '';
+
+            getTitle({page}, {context: 'page'}, {property: 'twitter'})
+                .should.equal('Page title');
+        });
+
+        // NOTE: this is a legacy format and should be resolved with https://github.com/TryGhost/Ghost/issues/10042
+        it('has correct fallbacks for context: page (legacy format)', function () {
+            localSettingsCache.title = 'My site title';
+            const post = {
+                title: 'Page title',
+                meta_title: 'Page meta title',
+                twitter_title: 'Page twitter title'
+            };
+
+            getTitle({post}, {context: 'page'}, {property: 'twitter'})
+                .should.equal('Page twitter title');
+
+            post.twitter_title = '';
+
+            getTitle({post}, {context: 'page'}, {property: 'twitter'})
+                .should.equal('Page meta title');
+
+            post.meta_title = '';
+
+            getTitle({post}, {context: 'page'}, {property: 'twitter'})
+                .should.equal('Page title');
+        });
+
+        it('has correct fallbacks for context: author', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const author = {
+                name: 'Author name'
+            };
+
+            getTitle({author}, {context: 'author'}, {property: 'twitter'})
+                .should.equal('Author name - Site title');
+        });
+
+        it('has correct fallbacks for context: author_paged', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const author = {
+                name: 'Author name'
+            };
+
+            getTitle({author}, {context: ['author', 'paged'], pagination: {total: 40, page: 3}}, {property: 'twitter'})
+                .should.equal('Author name - Site title (Page 3)');
+        });
+
+        it('has correct fallbacks for context: tag', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const tag = {
+                name: 'Tag name',
+                meta_title: 'Tag meta title'
+            };
+
+            getTitle({tag}, {context: 'tag'}, {property: 'twitter'})
+                .should.equal('Tag meta title');
+
+            tag.meta_title = '';
+
+            getTitle({tag}, {context: 'tag'}, {property: 'twitter'})
+                .should.equal('Tag name - Site title');
+        });
+
+        it('has correct fallbacks for context: tag_paged', function () {
+            localSettingsCache.title = 'Site title';
+            localSettingsCache.meta_title = 'Site meta title';
+            const tag = {
+                name: 'Tag name',
+                meta_title: 'Tag meta title'
+            };
+
+            getTitle({tag}, {context: ['tag', 'paged'], pagination: {total: 40, page: 3}}, {property: 'twitter'})
+                .should.equal('Tag meta title');
+
+            tag.meta_title = '';
+
+            getTitle({tag}, {context: ['tag', 'paged'], pagination: {total: 40, page: 3}}, {property: 'twitter'})
+                .should.equal('Tag name - Site title (Page 3)');
+        });
     });
 
-    it('v2: should return page title if in page context', function () {
-        var title = getTitle({
-            page: {
-                title: 'My awesome page!'
-            }
-        }, {context: ['page']});
-
-        title.should.equal('My awesome page!');
-    });
-
-    it('should return post title if in amp and page context', function () {
-        var title = getTitle({
-            post: {
-                title: 'My awesome page!'
-            }
-        }, {context: ['amp', 'page']});
-
-        title.should.equal('My awesome page!');
-    });
-
-    it('should return post meta_title if in post data', function () {
-        var title = getTitle({
-            post: {
-                name: 'My awesome post!',
-                meta_title: 'My Tag Meta Title Post!  '
-            }
-        }, {context: ['post']});
-
-        title.should.equal('My Tag Meta Title Post!');
-    });
-
-    it('should return post meta_title if amp context in post data', function () {
-        var title = getTitle({
-            post: {
-                name: 'My awesome post!',
-                meta_title: 'My Tag Meta Title Post!  '
-            }
-        }, {context: ['amp', 'post']});
-
-        title.should.equal('My Tag Meta Title Post!');
-    });
-
-    it('should return blog title with page if unknown type', function () {
-        localSettingsCache.title = 'My blog title 4';
+    it('should return site title with page if unknown type', function () {
+        localSettingsCache.title = 'My site title 4';
 
         var title = getTitle({}, {
             context: ['paged'],
@@ -253,6 +447,6 @@ describe('getTitle', function () {
             }
         });
 
-        title.should.equal('My blog title 4 (Page 35)');
+        title.should.equal('My site title 4 (Page 35)');
     });
 });

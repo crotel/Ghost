@@ -1,8 +1,8 @@
-const  should = require('should');
-const  hbs = require('../../../frontend/services/themes/engine');
-const  configUtils = require('../../utils/configUtils');
-const  path = require('path');
-const  helpers = require('../../../frontend/helpers');
+const should = require('should');
+const hbs = require('../../../frontend/services/themes/engine');
+const configUtils = require('../../utils/configUtils');
+const path = require('path');
+const helpers = require('../../../frontend/helpers');
 
 const runHelper = data => helpers.navigation.call({}, data);
 const runHelperThunk = data => () => runHelper(data);
@@ -21,6 +21,8 @@ describe('{{navigation}} helper', function () {
 
         // The navigation partial expects this helper
         // @TODO: change to register with Ghost's own registration tools
+        hbs.registerHelper('link_class', helpers.link_class);
+        hbs.registerHelper('concat', helpers.concat);
         hbs.registerHelper('url', helpers.url);
         hbs.registerHelper('foreach', helpers.foreach);
     });
@@ -28,8 +30,9 @@ describe('{{navigation}} helper', function () {
     beforeEach(function () {
         optionsData = {
             data: {
-                blog: {
-                    navigation: []
+                site: {
+                    navigation: [],
+                    secondary_navigation: []
                 },
                 root: {
                     relativeUrl: ''
@@ -40,20 +43,20 @@ describe('{{navigation}} helper', function () {
 
     it('should throw errors on invalid data', function () {
         // Test 1: navigation = string
-        optionsData.data.blog.navigation = 'not an object';
+        optionsData.data.site.navigation = 'not an object';
         runHelperThunk(optionsData).should.throwError('navigation data is not an object or is a function');
 
         // Test 2: navigation = function
-        optionsData.data.blog.navigation = function () {
+        optionsData.data.site.navigation = function () {
         };
         runHelperThunk(optionsData).should.throwError('navigation data is not an object or is a function');
 
         // Test 3: invalid label
-        optionsData.data.blog.navigation = [{label: 1, url: 'bar'}];
+        optionsData.data.site.navigation = [{label: 1, url: 'bar'}];
         runHelperThunk(optionsData).should.throwError('Invalid value, Url and Label must be strings');
 
         // Test 4: invalid url
-        optionsData.data.blog.navigation = [{label: 'foo', url: 1}];
+        optionsData.data.site.navigation = [{label: 'foo', url: 1}];
         runHelperThunk(optionsData).should.throwError('Invalid value, Url and Label must be strings');
     });
 
@@ -69,7 +72,7 @@ describe('{{navigation}} helper', function () {
             rendered;
         delete optionsData.data.root.relativeUrl;
 
-        optionsData.data.blog.navigation = [singleItem];
+        optionsData.data.site.navigation = [singleItem];
         rendered = runHelper(optionsData);
         rendered.string.should.containEql('li');
         rendered.string.should.containEql('nav-foo');
@@ -81,7 +84,7 @@ describe('{{navigation}} helper', function () {
             testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
             rendered;
 
-        optionsData.data.blog.navigation = [singleItem];
+        optionsData.data.site.navigation = [singleItem];
         rendered = runHelper(optionsData);
 
         should.exist(rendered);
@@ -97,7 +100,7 @@ describe('{{navigation}} helper', function () {
             testUrl2 = 'href="' + configUtils.config.get('url') + '/qux"',
             rendered;
 
-        optionsData.data.blog.navigation = [firstItem, secondItem];
+        optionsData.data.site.navigation = [firstItem, secondItem];
         rendered = runHelper(optionsData);
 
         should.exist(rendered);
@@ -112,7 +115,7 @@ describe('{{navigation}} helper', function () {
             secondItem = {label: 'Bar', url: '/qux'},
             rendered;
 
-        optionsData.data.blog.navigation = [firstItem, secondItem];
+        optionsData.data.site.navigation = [firstItem, secondItem];
         optionsData.data.root.relativeUrl = '/foo';
         rendered = runHelper(optionsData);
 
@@ -128,7 +131,7 @@ describe('{{navigation}} helper', function () {
             secondItem = {label: 'Bar', url: '/qux'},
             rendered;
 
-        optionsData.data.blog.navigation = [firstItem, secondItem];
+        optionsData.data.site.navigation = [firstItem, secondItem];
         optionsData.data.root.relativeUrl = '/foo/';
         rendered = runHelper(optionsData);
 
@@ -143,7 +146,7 @@ describe('{{navigation}} helper', function () {
         var firstItem = {label: 'Foo', url: '/?foo=bar&baz=qux'},
             rendered;
 
-        optionsData.data.blog.navigation = [firstItem];
+        optionsData.data.site.navigation = [firstItem];
         rendered = runHelper(optionsData);
 
         should.exist(rendered);
@@ -156,7 +159,7 @@ describe('{{navigation}} helper', function () {
         var firstItem = {label: 'Foo', url: '/?foo=space bar&<script>alert("gotcha")</script>'},
             rendered;
 
-        optionsData.data.blog.navigation = [firstItem];
+        optionsData.data.site.navigation = [firstItem];
         rendered = runHelper(optionsData);
 
         should.exist(rendered);
@@ -169,11 +172,46 @@ describe('{{navigation}} helper', function () {
         var firstItem = {label: 'Foo', url: '/?foo=space%20bar'},
             rendered;
 
-        optionsData.data.blog.navigation = [firstItem];
+        optionsData.data.site.navigation = [firstItem];
         rendered = runHelper(optionsData);
 
         should.exist(rendered);
         rendered.string.should.not.containEql('foo=space%2520bar');
+    });
+
+    describe('type="secondary"', function () {
+        it('can render one item', function () {
+            var singleItem = {label: 'Foo', url: '/foo'},
+                testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
+                rendered;
+
+            optionsData.data.site.secondary_navigation = [singleItem];
+            optionsData.hash = {type: 'secondary'};
+            rendered = runHelper(optionsData);
+
+            should.exist(rendered);
+            rendered.string.should.containEql('li');
+            rendered.string.should.containEql('nav-foo');
+            rendered.string.should.containEql(testUrl);
+        });
+
+        it('can render multiple items', function () {
+            var firstItem = {label: 'Foo', url: '/foo'},
+                secondItem = {label: 'Bar Baz Qux', url: '/qux'},
+                testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
+                testUrl2 = 'href="' + configUtils.config.get('url') + '/qux"',
+                rendered;
+
+            optionsData.data.site.secondary_navigation = [firstItem, secondItem];
+            optionsData.hash = {type: 'secondary'};
+            rendered = runHelper(optionsData);
+
+            should.exist(rendered);
+            rendered.string.should.containEql('nav-foo');
+            rendered.string.should.containEql('nav-bar-baz-qux');
+            rendered.string.should.containEql(testUrl);
+            rendered.string.should.containEql(testUrl2);
+        });
     });
 });
 
@@ -193,8 +231,9 @@ describe('{{navigation}} helper with custom template', function () {
     beforeEach(function () {
         optionsData = {
             data: {
-                blog: {
-                    navigation: [{label: 'Foo', url: '/foo'}]
+                site: {
+                    navigation: [{label: 'Foo', url: '/foo'}],
+                    secondary_navigation: [{label: 'Fighters', url: '/foo'}]
                 },
                 root: {
                     relativeUrl: ''
@@ -203,18 +242,19 @@ describe('{{navigation}} helper with custom template', function () {
         };
     });
 
-    it('can render one item and @blog title', function () {
+    it('can render one item and @site title', function () {
         var testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
             rendered;
 
-        // Set @blog.title
-        optionsData.data.blog.title = 'Chaos is a ladder.';
+        // Set @site.title
+        optionsData.data.site.title = 'Chaos is a ladder.';
 
         rendered = runHelper(optionsData);
 
         should.exist(rendered);
         rendered.string.should.containEql('Chaos is a ladder');
         rendered.string.should.not.containEql('isHeader is set');
+        rendered.string.should.not.containEql('Jeremy Bearimy baby!');
         rendered.string.should.containEql(testUrl);
         rendered.string.should.containEql('Foo');
     });
@@ -231,7 +271,25 @@ describe('{{navigation}} helper with custom template', function () {
         should.exist(rendered);
         rendered.string.should.not.containEql('Chaos is a ladder');
         rendered.string.should.containEql('isHeader is set');
+        rendered.string.should.not.containEql('Jeremy Bearimy baby!');
         rendered.string.should.containEql(testUrl);
         rendered.string.should.containEql('Foo');
+    });
+
+    it('sets isSecondary for type=secondary', function () {
+        var testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
+            rendered;
+
+        // Simulate {{navigation type="secondary"}}
+        optionsData.hash = {type: 'secondary'};
+
+        rendered = runHelper(optionsData);
+
+        should.exist(rendered);
+        rendered.string.should.not.containEql('Chaos is a ladder');
+        rendered.string.should.not.containEql('isHeader is set');
+        rendered.string.should.containEql('Jeremy Bearimy baby!');
+        rendered.string.should.containEql(testUrl);
+        rendered.string.should.containEql('Fighters');
     });
 });

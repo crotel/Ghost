@@ -11,6 +11,7 @@ const getInstance = (options) => {
         url: options.url,
         adminUrl: options.adminUrl,
         apiVersions: options.apiVersions,
+        defaultApiVersion: 'v3',
         slugs: options.slugs,
         redirectCacheMaxAge: options.redirectCacheMaxAge,
         baseApiPath: '/ghost/api'
@@ -21,9 +22,19 @@ const getInstance = (options) => {
 
 const stubUrlUtils = (options, sandbox) => {
     const stubInstance = getInstance(options);
+    const classPropNames = Object.getOwnPropertyNames(Object.getPrototypeOf(urlUtils))
+        .filter(name => name !== 'constructor');
 
-    Object.keys(urlUtils).forEach((key) => {
-        sandbox.stub(urlUtils, key).callsFake(stubInstance[key]);
+    classPropNames.forEach((key) => {
+        if (typeof urlUtils[key] === 'function') {
+            sandbox.stub(urlUtils, key).callsFake(function () {
+                return stubInstance[key](...arguments);
+            });
+        } else {
+            sandbox.stub(urlUtils, key).get(function () {
+                return stubInstance[key];
+            });
+        }
     });
 };
 
@@ -33,6 +44,7 @@ const stubUrlUtilsFromConfig = () => {
         url: config.get('url'),
         adminUrl: config.get('admin:url'),
         apiVersions: config.get('api:versions'),
+        defaultApiVersion: 'v3',
         slugs: config.get('slugs').protected,
         redirectCacheMaxAge: config.get('caching:301:maxAge'),
         baseApiPath: '/ghost/api'

@@ -1,13 +1,18 @@
-var coreHelpers = {},
-    register = require('./register'),
-    registerThemeHelper = register.registerThemeHelper,
-    registerAsyncThemeHelper = register.registerAsyncThemeHelper,
-    registerAllCoreHelpers;
+const proxy = require('./proxy');
+const register = require('./register');
+
+const coreHelpers = {};
+const registerThemeHelper = register.registerThemeHelper;
+const registerAsyncThemeHelper = register.registerAsyncThemeHelper;
+
+let registerAllCoreHelpers;
 
 coreHelpers.asset = require('./asset');
 coreHelpers.author = require('./author');
 coreHelpers.authors = require('./authors');
 coreHelpers.body_class = require('./body_class');
+coreHelpers.cancel_link = require('./cancel_link');
+coreHelpers.concat = require('./concat');
 coreHelpers.content = require('./content');
 coreHelpers.date = require('./date');
 coreHelpers.encode = require('./encode');
@@ -21,6 +26,8 @@ coreHelpers.img_url = require('./img_url');
 coreHelpers.is = require('./is');
 coreHelpers.has = require('./has');
 coreHelpers.lang = require('./lang');
+coreHelpers.link = require('./link');
+coreHelpers.link_class = require('./link_class');
 coreHelpers.meta_description = require('./meta_description');
 coreHelpers.meta_title = require('./meta_title');
 coreHelpers.navigation = require('./navigation');
@@ -37,12 +44,27 @@ coreHelpers.title = require('./title');
 coreHelpers.twitter_url = require('./twitter_url');
 coreHelpers.url = require('./url');
 
+function labsEnabledMembers() {
+    let self = this, args = arguments;
+
+    return proxy.labs.enabledHelper({
+        flagKey: 'members',
+        flagName: 'Members',
+        helperName: 'cancel_link',
+        helpUrl: 'https://ghost.org/faq/members/'
+    }, () => {
+        return coreHelpers.cancel_link.apply(self, args);
+    });
+}
+
 registerAllCoreHelpers = function registerAllCoreHelpers() {
     // Register theme helpers
     registerThemeHelper('asset', coreHelpers.asset);
     registerThemeHelper('author', coreHelpers.author);
     registerThemeHelper('authors', coreHelpers.authors);
     registerThemeHelper('body_class', coreHelpers.body_class);
+    registerThemeHelper('cancel_link', labsEnabledMembers);
+    registerThemeHelper('concat', coreHelpers.concat);
     registerThemeHelper('content', coreHelpers.content);
     registerThemeHelper('date', coreHelpers.date);
     registerThemeHelper('encode', coreHelpers.encode);
@@ -53,6 +75,8 @@ registerAllCoreHelpers = function registerAllCoreHelpers() {
     registerThemeHelper('is', coreHelpers.is);
     registerThemeHelper('img_url', coreHelpers.img_url);
     registerThemeHelper('lang', coreHelpers.lang);
+    registerThemeHelper('link', coreHelpers.link);
+    registerThemeHelper('link_class', coreHelpers.link_class);
     registerThemeHelper('meta_description', coreHelpers.meta_description);
     registerThemeHelper('meta_title', coreHelpers.meta_title);
     registerThemeHelper('navigation', coreHelpers.navigation);

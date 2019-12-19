@@ -1,6 +1,6 @@
 var should = require('should'),
 
-// Stuff we are testing
+    // Stuff we are testing
     helpers = require('../../../frontend/helpers'),
     moment = require('moment-timezone');
 
@@ -19,7 +19,7 @@ describe('{{date}} helper', function () {
                     format: format
                 },
                 data: {
-                    blog: {
+                    site: {
                         timezone: 'Europe/Dublin'
                     }
                 }
@@ -47,7 +47,7 @@ describe('{{date}} helper', function () {
                     timeago: true
                 },
                 data: {
-                    blog: {
+                    site: {
                         timezone: 'Europe/Dublin'
                     }
                 }

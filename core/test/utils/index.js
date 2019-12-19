@@ -11,7 +11,6 @@ var Promise = require('bluebird'),
     KnexMigrator = require('knex-migrator'),
     ghost = require('../../server'),
     GhostServer = require('../../server/ghost-server'),
-    api = require('../../server/api'),
     common = require('../../server/lib/common'),
     fixtureUtils = require('../../server/data/schema/fixtures/utils'),
     db = require('../../server/data/db'),
@@ -94,7 +93,8 @@ fixtures = {
         let i, j, k = 0,
             posts = [];
 
-        const count = 25;
+        // NOTE: this variable should become a parameter as test logic depends on it
+        const count = 10;
 
         // insert users of different roles
         return Promise.resolve(fixtures.createUsersWithRoles()).then(function () {
@@ -195,9 +195,9 @@ fixtures = {
             let tags = results[1].toJSON();
 
             const injectionTagId = _.chain(tags)
-                    .filter({name: 'injection'})
-                    .map('id')
-                    .value()[0];
+                .filter({name: 'injection'})
+                .map('id')
+                .value()[0];
 
             if (max > posts.length) {
                 throw new Error('Trying to add more posts_tags than the number of posts.');
@@ -291,7 +291,7 @@ fixtures = {
     },
 
     createUsersWithoutOwner: function createUsersWithoutOwner() {
-        var usersWithoutOwner =  _.cloneDeep(DataGenerator.forKnex.users.slice(1));
+        var usersWithoutOwner = _.cloneDeep(DataGenerator.forKnex.users.slice(1));
 
         return Promise.map(usersWithoutOwner, function (user) {
             let userRolesRelations = _.filter(DataGenerator.forKnex.roles_users, {user_id: user.id});
@@ -317,7 +317,7 @@ fixtures = {
 
     createExtraUsers: function createExtraUsers() {
         // grab 3 more users
-        var extraUsers =  _.cloneDeep(DataGenerator.Content.users.slice(2, 6));
+        var extraUsers = _.cloneDeep(DataGenerator.Content.users.slice(2, 6));
         extraUsers = _.map(extraUsers, function (user) {
             return DataGenerator.forKnex.createUser(_.extend({}, user, {
                 id: ObjectId.generate(),
@@ -338,7 +338,7 @@ fixtures = {
         DataGenerator.Content.extraUsers = extraUsers;
 
         return Promise.map(extraUsers, function (user) {
-            user.roles =  roles[user.id];
+            user.roles = roles[user.id];
             return models.User.add(user, module.exports.context.internal);
         });
     },
@@ -352,21 +352,6 @@ fixtures = {
             slug: options.slug,
             status: options.status
         }, module.exports.context.internal);
-    },
-
-    // Creates a client, and access and refresh tokens for user with index or 2 by default
-    createTokensForUser: function createTokensForUser(index) {
-        return Promise.map(DataGenerator.forKnex.clients, function (client) {
-            return models.Client.add(client, module.exports.context.internal);
-        }).then(function () {
-            return models.Accesstoken.add(DataGenerator.forKnex.createToken({
-                user_id: DataGenerator.Content.users[index || 2].id
-            }), module.exports.context.internal);
-        }).then(function () {
-            return models.Refreshtoken.add(DataGenerator.forKnex.createToken({
-                user_id: DataGenerator.Content.users[index || 2].id
-            }), module.exports.context.internal);
-        });
     },
 
     insertOne: function insertOne(modelName, tableName, fn, index) {
@@ -401,7 +386,7 @@ fixtures = {
     },
 
     permissionsFor: function permissionsFor(obj) {
-        var permsToInsert =  _.cloneDeep(fixtureUtils.findModelFixtures('Permission', {object_type: obj}).entries),
+        var permsToInsert = _.cloneDeep(fixtureUtils.findModelFixtures('Permission', {object_type: obj}).entries),
             permsRolesToInsert = fixtureUtils.findPermissionRelationsForObject(obj).entries,
             actions = [],
             permissionsRoles = {},
@@ -457,27 +442,6 @@ fixtures = {
         });
     },
 
-    insertClients: function insertClients() {
-        return Promise.map(DataGenerator.forKnex.clients, function (client) {
-            return models.Client.add(client, module.exports.context.internal);
-        });
-    },
-
-    insertClientWithTrustedDomain: function insertClientWithTrustedDomain() {
-        const client = DataGenerator.forKnex.createClient({slug: 'ghost-test'});
-
-        return models.Client.add(client, module.exports.context.internal)
-            .then(function () {
-                return models.ClientTrustedDomain.add(DataGenerator.forKnex.createTrustedDomain({
-                    client_id: client.id
-                }), module.exports.context.internal);
-            });
-    },
-
-    insertAccessToken: function insertAccessToken(override) {
-        return models.Accesstoken.insert(DataGenerator.forKnex.createToken(override), module.exports.context.internal);
-    },
-
     insertInvites: function insertInvites() {
         return Promise.map(DataGenerator.forKnex.invites, function (invite) {
             return models.Invite.add(invite, module.exports.context.internal);
@@ -499,6 +463,12 @@ fixtures = {
     insertApiKeys: function insertApiKeys() {
         return Promise.map(DataGenerator.forKnex.api_keys, function (api_key) {
             return models.ApiKey.add(api_key, module.exports.context.internal);
+        });
+    },
+
+    insertEmails: function insertEmails() {
+        return Promise.map(DataGenerator.forKnex.emails, function (email) {
+            return models.Email.add(email, module.exports.context.internal);
         });
     }
 };
@@ -583,6 +553,9 @@ toDoList = {
     subscriber: function insertSubscriber() {
         return fixtures.insertOne('Subscriber', 'subscribers', 'createSubscriber');
     },
+    member: function insertMember() {
+        return fixtures.insertOne('Member', 'members', 'createMember');
+    },
     posts: function insertPostsAndTags() {
         return fixtures.insertPostsAndTags();
     },
@@ -614,9 +587,6 @@ toDoList = {
     'users:extra': function createExtraUsers() {
         return fixtures.createExtraUsers();
     },
-    'user-token': function createTokensForUser(index) {
-        return fixtures.createTokensForUser(index);
-    },
     owner: function insertOwnerUser() {
         return fixtures.insertOwnerUser();
     },
@@ -631,12 +601,6 @@ toDoList = {
     },
     perms: function permissionsFor(obj) {
         return fixtures.permissionsFor(obj);
-    },
-    clients: function insertClients() {
-        return fixtures.insertClients();
-    },
-    'client:trusted-domain': function insertClients() {
-        return fixtures.insertClientWithTrustedDomain();
     },
     filter: function createFilterParamFixtures() {
         return filterData(DataGenerator);
@@ -655,6 +619,9 @@ toDoList = {
     },
     api_keys: function insertApiKeys() {
         return fixtures.insertApiKeys();
+    },
+    emails: function insertEmails() {
+        return fixtures.insertEmails();
     }
 };
 
@@ -694,7 +661,7 @@ getFixtureOps = function getFixtureOps(toDos) {
     _.each(toDos, function (value, toDo) {
         var tmp;
 
-        if ((toDo !== 'perms:init' && toDo.indexOf('perms:') !== -1) || toDo.indexOf('user-token:') !== -1) {
+        if ((toDo !== 'perms:init' && toDo.indexOf('perms:') !== -1)) {
             tmp = toDo.split(':');
 
             fixtureOps.push(function addCustomFixture() {
@@ -935,10 +902,6 @@ startGhost = function startGhost(options) {
                     .then((roles) => {
                         module.exports.existingData.roles = roles.toJSON();
 
-                        return models.Client.findAll({columns: ['id', 'secret']});
-                    })
-                    .then((clients) => {
-                        module.exports.existingData.clients = clients.toJSON();
                         return models.User.findAll({columns: ['id', 'email']});
                     })
                     .then((users) => {
@@ -948,6 +911,10 @@ startGhost = function startGhost(options) {
                     })
                     .then((tags) => {
                         module.exports.existingData.tags = tags.toJSON();
+                        return models.ApiKey.findAll({withRelated: 'integration'});
+                    })
+                    .then((keys) => {
+                        module.exports.existingData.apiKeys = keys.toJSON(module.exports.context.internal);
                     })
                     .return(ghostServer);
             });
@@ -1008,11 +975,6 @@ startGhost = function startGhost(options) {
                 .then((roles) => {
                     module.exports.existingData.roles = roles.toJSON();
 
-                    return models.Client.findAll({columns: ['id', 'secret']});
-                })
-                .then((clients) => {
-                    module.exports.existingData.clients = clients.toJSON();
-
                     return models.User.findAll({columns: ['id', 'email']});
                 })
                 .then((users) => {
@@ -1022,6 +984,11 @@ startGhost = function startGhost(options) {
                 })
                 .then((tags) => {
                     module.exports.existingData.tags = tags.toJSON();
+
+                    return models.ApiKey.findAll({withRelated: 'integration'});
+                })
+                .then((keys) => {
+                    module.exports.existingData.apiKeys = keys.toJSON();
                 })
                 .return(ghostServer);
         });
@@ -1055,7 +1022,6 @@ module.exports = {
             cacheStub.withArgs('active_theme').returns(options.theme || 'casper');
             cacheStub.withArgs('active_timezone').returns('Etc/UTC');
             cacheStub.withArgs('permalinks').returns('/:slug/');
-            cacheStub.withArgs('labs').returns({publicAPI: true});
 
             if (options.amp) {
                 cacheStub.withArgs('amp').returns(true);
@@ -1064,12 +1030,6 @@ module.exports = {
             if (options.apps) {
                 cacheStub.withArgs('active_apps').returns([]);
             }
-
-            sandbox.stub(api.clients, 'read').returns(Promise.resolve({
-                clients: [
-                    {slug: 'ghost-frontend', secret: 'a1bcde23cfe5', status: 'enabled'}
-                ]
-            }));
 
             sandbox.stub(imageLib.imageSize, 'getImageSizeFromUrl').resolves();
         },
@@ -1153,7 +1113,7 @@ module.exports = {
             locals = options.locals || {},
             hbsStructure = {
                 data: {
-                    blog: {},
+                    site: {},
                     config: {},
                     labs: {},
                     root: {

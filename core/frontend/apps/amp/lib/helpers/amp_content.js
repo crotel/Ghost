@@ -124,7 +124,7 @@ function getAmperizeHTML(html, post) {
     amperize = amperize || new Amperize();
 
     // make relative URLs abolute
-    html = urlUtils.makeAbsoluteUrls(html, urlUtils.urlFor('home', true), post.url).html();
+    html = urlUtils.htmlRelativeToAbsolute(html, post.url);
 
     if (!amperizeCache[post.id] || moment(new Date(amperizeCache[post.id].updated_at)).diff(new Date(post.updated_at)) < 0) {
         return new Promise((resolve) => {
@@ -133,14 +133,16 @@ function getAmperizeHTML(html, post) {
 
                 if (err) {
                     if (err.src) {
+                        // This is a valid 500 GhostError because it means the amperize parser is unable to handle some Ghost HTML.
                         logging.error(new errors.GhostError({
                             message: `AMP HTML couldn't get parsed: ${err.src}`,
+                            code: 'AMP_PARSER_ERROR',
                             err: err,
                             context: post.url,
                             help: i18n.t('errors.apps.appWillNotBeLoaded.help')
                         }));
                     } else {
-                        logging.error(new errors.GhostError({err}));
+                        logging.error(new errors.GhostError({err, code: 'AMP_PARSER_ERROR'}));
                     }
 
                     // save it in cache to prevent multiple calls to Amperize until

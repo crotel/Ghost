@@ -1,6 +1,8 @@
+const url = require('url');
 const should = require('should');
 const supertest = require('supertest');
 const _ = require('lodash');
+const cheerio = require('cheerio');
 const testUtils = require('../../../../utils');
 const localUtils = require('./utils');
 const configUtils = require('../../../../utils/configUtils');
@@ -10,7 +12,7 @@ const config = require('../../../../../server/config');
 const ghost = testUtils.startGhost;
 let request;
 
-describe('Posts', function () {
+describe('api/v2/content/posts', function () {
     before(function () {
         return ghost()
             .then(function () {
@@ -27,6 +29,63 @@ describe('Posts', function () {
     });
 
     const validKey = localUtils.getValidKey();
+
+    it('Can request posts', function (done) {
+        request.get(localUtils.API.getApiQuery(`posts/?key=${validKey}`))
+            .set('Origin', testUtils.API.getURL())
+            .expect('Content-Type', /json/)
+            .expect('Cache-Control', testUtils.cacheRules.private)
+            .expect(200)
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.headers.vary.should.eql('Accept-Encoding');
+                should.exist(res.headers['access-control-allow-origin']);
+                should.not.exist(res.headers['x-cache-invalidate']);
+
+                var jsonResponse = res.body;
+                should.exist(jsonResponse.posts);
+                localUtils.API.checkResponse(jsonResponse, 'posts');
+                jsonResponse.posts.should.have.length(11);
+                localUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                localUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
+                _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
+
+                // Default order 'published_at desc' check
+                jsonResponse.posts[0].slug.should.eql('welcome');
+                jsonResponse.posts[6].slug.should.eql('themes');
+
+                // check meta response for this test
+                jsonResponse.meta.pagination.page.should.eql(1);
+                jsonResponse.meta.pagination.limit.should.eql(15);
+                jsonResponse.meta.pagination.pages.should.eql(1);
+                jsonResponse.meta.pagination.total.should.eql(11);
+                jsonResponse.meta.pagination.hasOwnProperty('next').should.be.true();
+                jsonResponse.meta.pagination.hasOwnProperty('prev').should.be.true();
+                should.not.exist(jsonResponse.meta.pagination.next);
+                should.not.exist(jsonResponse.meta.pagination.prev);
+
+                // kitchen sink
+                res.body.posts[9].slug.should.eql(testUtils.DataGenerator.Content.posts[1].slug);
+
+                let urlParts = url.parse(res.body.posts[9].feature_image);
+                should.exist(urlParts.protocol);
+                should.exist(urlParts.host);
+
+                urlParts = url.parse(res.body.posts[9].url);
+                should.exist(urlParts.protocol);
+                should.exist(urlParts.host);
+
+                const $ = cheerio.load(res.body.posts[9].html);
+                urlParts = url.parse($('img').attr('src'));
+                should.exist(urlParts.protocol);
+                should.exist(urlParts.host);
+
+                done();
+            });
+    });
 
     it('browse posts with basic page filter should not return pages', function (done) {
         request.get(localUtils.API.getApiQuery(`posts/?key=${validKey}&filter=page:true`))
@@ -111,29 +170,6 @@ describe('Posts', function () {
             });
     });
 
-    it('browse posts, ignores staticPages', function (done) {
-        request.get(localUtils.API.getApiQuery(`posts/?key=${validKey}&staticPages=true`))
-            .set('Origin', testUtils.API.getURL())
-            .expect('Content-Type', /json/)
-            .expect('Cache-Control', testUtils.cacheRules.private)
-            .expect(200)
-            .end(function (err, res) {
-                if (err) {
-                    return done(err);
-                }
-
-                should.not.exist(res.headers['x-cache-invalidate']);
-                var jsonResponse = res.body;
-                should.exist(jsonResponse.posts);
-                localUtils.API.checkResponse(jsonResponse, 'posts');
-                jsonResponse.posts.should.have.length(11);
-                localUtils.API.checkResponse(jsonResponse.posts[0], 'post');
-                localUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
-                _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
-                done();
-            });
-    });
-
     it('can\'t read page', function () {
         return request
             .get(localUtils.API.getApiQuery(`posts/${testUtils.DataGenerator.Content.posts[5].id}/?key=${validKey}`))
@@ -153,5 +189,14 @@ describe('Posts', function () {
             .then((res) => {
                 localUtils.API.checkResponse(res.body.posts[0], 'post', null, null, ['id', 'title', 'slug']);
             });
+    });
+
+    it('can\'t read page with multiple keys', function () {
+        return request
+            .get(localUtils.API.getApiQuery(`posts?key=${validKey}&key=&fields=title,slug`))
+            .set('Origin', testUtils.API.getURL())
+            .expect('Content-Type', /json/)
+            .expect('Cache-Control', testUtils.cacheRules.private)
+            .expect(400);
     });
 });

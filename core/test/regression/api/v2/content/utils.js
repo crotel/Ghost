@@ -21,19 +21,27 @@ const expectedProperties = {
         .concat('url', 'primary_tag', 'primary_author')
         // v2 API doesn't return unused fields
         .without('locale', 'visibility')
+        // emails are not supported in API v2
+        .without('send_email_when_published')
         // These fields aren't useful as they always have known values
         .without('status')
-        // @TODO: https://github.com/TryGhost/Ghost/issues/10335
-        // .without('page')
+        .concat('page')
+        .without('type')
         // v2 returns a calculated excerpt field
         .concat('excerpt')
+        // returns meta fields from `posts_meta` schema
+        .concat(
+            ..._(schema.posts_meta).keys()
+                .without('post_id', 'id')
+                // emails are not supported in API v2
+                .without('email_subject')
+        )
     ,
     author: _(schema.users)
         .keys()
         .without(
             'password',
             'email',
-            'ghost_auth_access_token',
             'ghost_auth_id',
             'created_at',
             'created_by',

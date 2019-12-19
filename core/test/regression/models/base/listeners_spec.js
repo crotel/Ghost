@@ -22,7 +22,7 @@ describe('Models: listeners', function () {
 
     before(testUtils.teardown);
 
-    beforeEach(testUtils.setup('owner', 'user-token:0', 'settings'));
+    beforeEach(testUtils.setup('owner', 'settings'));
 
     beforeEach(function () {
         sinon.stub(common.events, 'on').callsFake(function (eventName, callback) {
@@ -247,67 +247,6 @@ describe('Models: listeners', function () {
                         .catch(done);
                 })();
             });
-
-            it('collision: ensure the listener always succeeds', function (done) {
-                var timeout,
-                    interval,
-                    post1 = posts[0],
-                    listenerHasFinished = false;
-
-                sinon.spy(models.Post, 'findAll');
-
-                // simulate a delay, so that the edit operation from the test here interrupts
-                // the goal here is to force that the listener has old post data, updated_at is then too old
-                // e.g. user edits while listener is active
-                listeners.__set__('sequence', function overrideSequence() {
-                    var self = this,
-                        args = arguments;
-
-                    return Promise.delay(300)
-                        .then(function () {
-                            return sequence.apply(self, args)
-                                .finally(function () {
-                                    setTimeout(function () {
-                                        listenerHasFinished = true;
-                                    }, 50);
-                                });
-                        });
-                });
-
-                scope.timezoneOffset = moment.tz.zone('Asia/Baghdad').utcOffset(now) - moment.tz.zone('Etc/UTC').utcOffset(now);
-                scope.oldTimezone = 'Asia/Baghdad';
-                scope.newTimezone = 'Etc/UTC';
-
-                eventsToRemember['settings.active_timezone.edited']({
-                    attributes: {value: scope.newTimezone},
-                    _previousAttributes: {value: scope.oldTimezone}
-                });
-
-                models.Post.findAll.calledOnce.should.eql(false);
-
-                // set a little timeout to ensure the listener fetched posts from the database and the updated_at difference
-                // is big enough to simulate the collision scenario
-                // if you remove the transaction from the listener, this test will fail and show a collision error
-                timeout = setTimeout(function () {
-                    clearTimeout(timeout);
-
-                    // ensure findAll was called in the listener
-                    // ensure findAll was called before user's edit operation
-                    models.Post.findAll.calledOnce.should.eql(true);
-
-                    // simulate a client updates the post during the listener activity
-                    models.Post.edit({title: 'a new title, yes!'}, _.merge({id: post1.id}, testUtils.context.internal))
-                        .then(function () {
-                            interval = setInterval(function () {
-                                if (listenerHasFinished) {
-                                    clearInterval(interval);
-                                    return done();
-                                }
-                            }, 100);
-                        })
-                        .catch(done);
-                }, 200);
-            });
         });
 
         describe('db has no scheduled posts', function () {
@@ -324,39 +263,6 @@ describe('Models: listeners', function () {
                     })
                     .catch(done);
             });
-        });
-    });
-
-    describe('on user is deactived', function () {
-        it('ensure tokens get deleted', function (done) {
-            var userId = testUtils.DataGenerator.Content.users[0].id,
-                timeout,
-                retries = 0;
-
-            (function retry() {
-                Promise.props({
-                    accesstokens: models.Accesstoken.findAll({context: {internal: true}, id: userId}),
-                    refreshtokens: models.Refreshtoken.findAll({context: {internal: true}, id: userId})
-                }).then(function (result) {
-                    if (retries === 0) {
-                        // trigger event after first check how many tokens the user has
-                        eventsToRemember['user.deactivated']({
-                            id: userId
-                        });
-
-                        result.accesstokens.length.should.eql(1);
-                        result.refreshtokens.length.should.eql(1);
-                    }
-
-                    if (!result.accesstokens.length && !result.refreshtokens.length) {
-                        return done();
-                    }
-
-                    retries = retries + 1;
-                    clearTimeout(timeout);
-                    timeout = setTimeout(retry, 500);
-                }).catch(done);
-            })();
         });
     });
 

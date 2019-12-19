@@ -27,7 +27,7 @@ function ping(post) {
         title = post.title,
         url = urlService.getUrlByResourceId(post.id, {absolute: true});
 
-    if (post.page || config.isPrivacyDisabled('useRpcPing') || settingsCache.get('is_private')) {
+    if (post.type === 'page' || config.isPrivacyDisabled('useRpcPing') || settingsCache.get('is_private')) {
         return;
     }
 
@@ -83,7 +83,7 @@ function ping(post) {
                     err: err,
                     message: err.message,
                     context: common.i18n.t('errors.services.ping.requestFailed.error', {service: 'xmlrpc'}),
-                    help: common.i18n.t('errors.services.ping.requestFailed.help', {url: 'https://docs.ghost.org'})
+                    help: common.i18n.t('errors.services.ping.requestFailed.help', {url: 'https://ghost.org/docs/'})
                 }));
             });
     });
